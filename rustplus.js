@@ -47,7 +47,7 @@ class RustPlus extends EventEmitter {
         protobuf.load(path.resolve(__dirname, "rustplus.proto")).then((root) => {
 
             // make sure existing connection is disconnected before connecting again.
-            if(this.websocket){
+            if (this.websocket) {
                 this.disconnect();
             }
 
@@ -73,33 +73,52 @@ class RustPlus extends EventEmitter {
             });
 
             this.websocket.on('message', (data) => {
-
-                // decode received message
-                var message = this.AppMessage.decode(data);
-
-                // check if received message is a response and if we have a callback registered for it
-                if(message.response && message.response.seq && this.seqCallbacks[message.response.seq]){
-
-                    // get the callback for the response sequence
-                    var callback = this.seqCallbacks[message.response.seq];
-
-                    // call the callback with the response message
-                    var result = callback(message);
-
-                    // remove the callback
+                let message;
+                try {
+                    message = this.AppMessage.decode(data);
+                } catch (err) {
+                    console.warn('⚠️ Decode error:', err.message, '| Raw buffer:', data.toString('hex'));
+                    this.emit('error', err);
+                    return;
+                }
+                if (message.response && message.response.seq && this.seqCallbacks[message.response.seq]) {
+                    const callback = this.seqCallbacks[message.response.seq];
+                    const result = callback(message);
                     delete this.seqCallbacks[message.response.seq];
-
-                    // if callback returns true, don't fire message event
-                    if(result){
-                        return;
-                    }
-
+                    if (result) return;
                 }
 
-                // fire message event for received messages that aren't handled by callback
-                this.emit('message', this.AppMessage.decode(data));
-
+                this.emit('message', message);
             });
+
+            // this.websocket.on('message', (data) => {
+
+            //     // decode received message
+            //     var message = this.AppMessage.decode(data);
+
+            //     // check if received message is a response and if we have a callback registered for it
+            //     if(message.response && message.response.seq && this.seqCallbacks[message.response.seq]){
+
+            //         // get the callback for the response sequence
+            //         var callback = this.seqCallbacks[message.response.seq];
+
+            //         // call the callback with the response message
+            //         var result = callback(message);
+
+            //         // remove the callback
+            //         delete this.seqCallbacks[message.response.seq];
+
+            //         // if callback returns true, don't fire message event
+            //         if(result){
+            //             return;
+            //         }
+
+            //     }
+
+            //     // fire message event for received messages that aren't handled by callback
+            //     this.emit('message', this.AppMessage.decode(data));
+
+            // });
 
             // fire event when disconnected
             this.websocket.on('close', () => {
@@ -114,7 +133,7 @@ class RustPlus extends EventEmitter {
      * Disconnect from the Rust Server.
      */
     disconnect() {
-        if(this.websocket){
+        if (this.websocket) {
             this.websocket.terminate();
             this.websocket = null;
         }
@@ -139,7 +158,7 @@ class RustPlus extends EventEmitter {
         let currentSeq = ++this.seq;
 
         // save callback if provided
-        if(callback){
+        if (callback) {
             this.seqCallbacks[currentSeq] = callback;
         }
 
@@ -178,7 +197,7 @@ class RustPlus extends EventEmitter {
                 // cancel timeout
                 clearTimeout(timeout);
 
-                if(message.response.error){
+                if (message.response.error) {
 
                     // reject promise if server returns an AppError for this request
                     reject(message.response.error);
@@ -277,7 +296,7 @@ class RustPlus extends EventEmitter {
             },
         }, callback);
     }
-    
+
     /**
      * Get the ingame time
     */
