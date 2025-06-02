@@ -68,19 +68,21 @@ class RustPlus extends EventEmitter {
             });
 
             // fire event for websocket errors
-            this.websocket.on('error', (e) => {
-                this.emit('error', e);
-            });
-
             this.websocket.on('message', (data) => {
+                if (!data || data.length < 4) {
+                    console.warn('Skipping empty or invalid buffer:', data?.length || 0);
+                    return;
+                }
+
                 let message;
                 try {
                     message = this.AppMessage.decode(data);
                 } catch (err) {
-                    console.warn('⚠️ Decode error:', err.message, '| Raw buffer:', data.toString('hex'));
+                    console.warn('Decode error:', err.message, '| Raw buffer:', data.toString('hex'));
                     this.emit('error', err);
                     return;
                 }
+
                 if (message.response && message.response.seq && this.seqCallbacks[message.response.seq]) {
                     const callback = this.seqCallbacks[message.response.seq];
                     const result = callback(message);
